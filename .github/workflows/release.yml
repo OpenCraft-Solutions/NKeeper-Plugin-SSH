@@ -22,7 +22,7 @@ jobs:
   # Everything that runs the plugin's code or its dependencies' happens here, where the official key doesn't exist.
   verify:
     name: Check the tag, build and test
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, nkeeper]
     timeout-minutes: 30
     outputs:
       version: ${{ steps.manifest.outputs.version }}
@@ -85,7 +85,7 @@ jobs:
   release:
     name: Pack, sign and publish
     needs: verify
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, nkeeper]
     timeout-minutes: 30
     environment: release
     permissions:
