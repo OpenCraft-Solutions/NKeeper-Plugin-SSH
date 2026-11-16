@@ -85,7 +85,9 @@ jobs:
   release:
     name: Pack, sign and publish
     needs: verify
-    runs-on: [self-hosted, nkeeper]
+    # Signing runs on the single-use runner, reset after every job, so nothing an earlier job left behind can
+    # reach the key.
+    runs-on: nkeeper-clean
     timeout-minutes: 30
     environment: release
     permissions:
