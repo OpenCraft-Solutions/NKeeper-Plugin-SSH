@@ -4,11 +4,11 @@ using System.Text;
 using System.Text.Json;
 using NKeeper.Testing;
 
-namespace NKeeper.Server.Tests;
+namespace NKeeper.Plugins.Ssh.Tests;
 
 /// <summary>
-/// docs/architecture.md §7.11: the real <c>ssh</c> plugin, packaged from its build output and loaded like any
-/// plugin, opening terminals on a real OpenSSH server through core's stream sessions.
+/// docs/architecture.md §7.11: the real <c>ssh</c> plugin, packaged by its build and loaded like any plugin into
+/// NKeeper's test server (NKeeper.Testing), opening terminals on a real OpenSSH server through core's stream sessions.
 /// </summary>
 public sealed class SshPluginTests(PostgresFixture postgres, SshServerFixture ssh) : IClassFixture<PostgresFixture>, IClassFixture<SshServerFixture>
 {
@@ -18,8 +18,8 @@ public sealed class SshPluginTests(PostgresFixture postgres, SshServerFixture ss
     public async Task The_plugin_contributes_its_service_and_session_types()
     {
         await using var server = await ServerAsync();
-        using var admin = await server.SignedInClientAsync();
-        var plugins = await admin.GetFromJsonAsync<JsonElement>(new Uri("/api/plugins", UriKind.Relative), Token);
+        using var admin = await server.SignedInClientAsync(Token);
+        var plugins = await admin.Http.GetFromJsonAsync<JsonElement>(new Uri("/api/plugins", UriKind.Relative), Token);
         var plugin = plugins.EnumerateArray().Single(p => p.GetProperty("id").GetString() == "ssh");
         Assert.Equal("loaded", plugin.GetProperty("state").GetString());
         var serviceType = Assert.Single(plugin.GetProperty("serviceTypes").EnumerateArray());
@@ -33,7 +33,7 @@ public sealed class SshPluginTests(PostgresFixture postgres, SshServerFixture ss
 
         // Its frontend, the terminal view, is served from the verified package.
         var entry = plugin.GetProperty("frontendEntry").GetString()!;
-        using var module = await admin.GetAsync(new Uri(entry, UriKind.Relative), Token);
+        using var module = await admin.Http.GetAsync(new Uri(entry, UriKind.Relative), Token);
         Assert.Equal(HttpStatusCode.OK, module.StatusCode);
         Assert.Contains("@nkeeper/sdk", await module.Content.ReadAsStringAsync(Token), StringComparison.Ordinal);
         var sessionType = Assert.Single(plugin.GetProperty("sessionTypes").EnumerateArray());
@@ -44,17 +44,17 @@ public sealed class SshPluginTests(PostgresFixture postgres, SshServerFixture ss
     public async Task A_terminal_opens_at_the_size_asked_resizes_and_ends_when_the_shell_exits()
     {
         await using var server = await ServerAsync();
-        var client = server.Client();
-        using var login = await client.LoginAsync(ServerScenario.AdminUserName, ServerScenario.AdminPassword);
+        using var client = server.CreateClient();
+        using var login = await client.SendAsync(HttpMethod.Post, "/api/auth/login", new { userNameOrEmail = TestServer.AdminUserName, password = TestServer.AdminPassword, rememberMe = false }, Token);
         login.EnsureSuccessStatusCode();
-        var cookie = string.Join("; ", login.SetCookies().Select(c => c.Split(';')[0]));
-        using var created = await client.SendWithTokenAsync(HttpMethod.Post, "/api/hosts", new
+        var cookie = string.Join("; ", login.Headers.GetValues("Set-Cookie").Select(c => c.Split(';')[0]));
+        using var created = await client.SendAsync(HttpMethod.Post, "/api/hosts", new
         {
             name = "ssh",
             ipAddress = SshServerFixture.Address,
             services = new[] { new { type = "ssh", port = ssh.Port, settings = new { } } },
             credentials = new[] { new { username = SshServerFixture.UserName, privateKey = ssh.PrivateKey } },
-        });
+        }, Token);
         Assert.True(created.StatusCode == HttpStatusCode.Created, await created.Content.ReadAsStringAsync(Token));
         var host = await created.Content.ReadFromJsonAsync<JsonElement>(Token);
 
@@ -84,10 +84,14 @@ public sealed class SshPluginTests(PostgresFixture postgres, SshServerFixture ss
         Assert.Equal("closed", (await terminal.ExpectAsync("closed")).GetProperty("reason").GetString());
     }
 
-    private async Task<ServerScenario> ServerAsync()
+    private async Task<TestServer> ServerAsync()
     {
-        var server = new ServerScenario(await postgres.CreateDatabaseAsync());
-        server.Install(TestPlugins.SshPackage(server.DevelopmentKey));
-        return server;
+        var options = new TestServerOptions { ConnectionString = await postgres.CreateDatabaseAsync() };
+        foreach (var package in DevelopmentKeys.BuiltPackages())
+        {
+            options.PluginPackages.Add(package);
+        }
+
+        return await TestServer.StartAsync(options, Token);
     }
 }

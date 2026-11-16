@@ -2,8 +2,20 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
-      "nkeeper.abstractions": {
-        "type": "Project"
+      "NKeeper.Abstractions": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "OuB3X4hgtTDEZUNaKGlwFnuBXKjiTBoGSN8XDCTC7fhdbvSi6TI6/4PIfERHtgiB+0kWTHiKYGhYmpORyHdRhw=="
+      },
+      "NKeeper.Plugin.Build": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "vladjOZsmUN4105JZiG2SNi2oDbafZb5nDZ24W72GLGt42azigwMzKFzDAXiJE1a0r1MW6mm7LSgPvoEPSuFBQ==",
+        "dependencies": {
+          "NKeeper.Abstractions": "1.0.0"
+        }
       }
     }
   }
