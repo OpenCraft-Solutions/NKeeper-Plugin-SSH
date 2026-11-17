@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup Label="Tests">
+    <!-- NKeeper.Testing's PostgreSQL fixture uses it without the package declaring it; the version is the one it is built with. -->
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
