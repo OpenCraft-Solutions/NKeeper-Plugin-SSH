@@ -16,7 +16,7 @@ public sealed class SshPlugin : IPlugin
     public void Contribute(IPluginContributions contributions, PluginContext context)
     {
         contributions.AddServiceType(new ServiceType(ServiceTypeId, "SSH") { DefaultPort = 22, Health = HealthProbe.Tcp });
-        contributions.AddSessionType(new SessionType(ServiceTypeId, "Terminal", typeof(TerminalSessionHandler)) { ServiceTypes = [ServiceTypeId] });
+        contributions.AddSessionType(new SessionType(ServiceTypeId, "Terminal", typeof(TerminalSessionHandler)) { ServiceTypes = [ServiceTypeId], RecordsTerminal = true });
         contributions.AddHostAction(new HostAction("ssh.terminal", "Terminal", SessionType: ServiceTypeId));
     }
 
